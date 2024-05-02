@@ -2,22 +2,21 @@ package com.example.clicker
 
 import android.content.Context
 import android.content.SharedPreferences
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.widget.Button
+import android.os.CountDownTimer
 import android.widget.ImageButton
 import android.widget.TextView
-import android.os.Handler
-import android.os.Looper
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
     private lateinit var button: ImageButton
-    private lateinit var resetButton: Button
     private lateinit var scoreText: TextView
+    private lateinit var timerText: TextView
     private var score: Int = 0
     private var maxScore: Int = 0
     private lateinit var shared: SharedPreferences
-
+    private lateinit var countDownTimer: CountDownTimer
     private val images = arrayOf(
         R.drawable.meme_png,
         R.drawable.meme_png3,
@@ -27,9 +26,7 @@ class MainActivity : AppCompatActivity() {
         R.drawable.meme_png7
     )
 
-    private val thresholds = listOf(30, 90, 180, 270, 360, 500)
-
-    private val handler = Handler(Looper.getMainLooper())
+    private val thresholds = listOf(30, 90, 180, 270, 360, 400)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,8 +34,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         button = findViewById(R.id.imageButton)
-        resetButton = findViewById(R.id.resetButton)
         scoreText = findViewById(R.id.scoreText)
+        timerText = findViewById(R.id.timerText)
 
         if (savedInstanceState != null) {
             score = savedInstanceState.getInt("score")
@@ -46,6 +43,32 @@ class MainActivity : AppCompatActivity() {
         } else {
             readData()
         }
+
+        countDownTimer = object : CountDownTimer(160000, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                val secondsRemaining = millisUntilFinished / 1000
+                val minutes = secondsRemaining / 60
+                val seconds = secondsRemaining % 60
+                timerText.text = "Время до сброса: ${minutes}m ${seconds}s"
+                decreaseScore()
+            }
+
+            override fun onFinish() {
+                timerText.text = "Время до сброса"
+                score = 0
+                maxScore = 0
+                button.setImageResource(images[0])
+                scoreText.text = getString(R.string.player_score, score.toString())
+                saveData()
+
+                restartCountdownTimer()
+
+
+                askForNewScore()
+            }
+        }
+
+        countDownTimer.start()
 
         button.setOnClickListener {
             score++
@@ -61,28 +84,28 @@ class MainActivity : AppCompatActivity() {
             button.setImageResource(images[index])
             scoreText.text = getString(R.string.player_score, score.toString())
             saveData()
-        }
 
-        resetButton.setOnClickListener {
-            score = 0
-            maxScore = 0
-            button.setImageResource(images[0])
-            scoreText.text = getString(R.string.player_score, score.toString())
-            saveData()
+            if (score >= 500) {
+
+                askForNewScore()
+                restartGame()
+            }
         }
 
         scoreText.text = getString(R.string.player_score, score.toString())
+    }
 
-        handler.post(object : Runnable {
-            override fun run() {
-                if (score > 0) {
-                    score--
-                    scoreText.text = getString(R.string.player_score, score.toString())
-                    saveData()
-                }
-                handler.postDelayed(this, 300)
-            }
-        })
+    private fun decreaseScore() {
+        if (score > 0) {
+            score--
+            scoreText.text = getString(R.string.player_score, score.toString())
+            saveData()
+        }
+    }
+
+    private fun restartCountdownTimer() {
+        countDownTimer.cancel()
+        countDownTimer.start()
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -92,8 +115,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun readData() {
-        score = shared.getInt("score", score)
-        maxScore = shared.getInt("maxScore", maxScore)
+        val prefs = getSharedPreferences("main", Context.MODE_PRIVATE)
+        score = prefs.getInt("score", 0)
+        maxScore = prefs.getInt("maxScore", 0)
     }
 
     private fun saveData() {
@@ -101,5 +125,19 @@ class MainActivity : AppCompatActivity() {
         edit.putInt("score", score)
         edit.putInt("maxScore", maxScore)
         edit.apply()
+    }
+
+    private fun askForNewScore() {
+        Toast.makeText(this, "Всё это конец!", Toast.LENGTH_SHORT).show()
+    }
+
+
+    private fun restartGame() {
+        score = 0
+        maxScore = 0
+        button.setImageResource(images[0])
+        scoreText.text = getString(R.string.player_score, score.toString())
+        saveData()
+        restartCountdownTimer()
     }
 }
