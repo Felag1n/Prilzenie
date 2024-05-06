@@ -97,7 +97,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun decreaseScore() {
         if (score > 0) {
-            score--
+            score-= 1 + score/100;
             scoreText.text = getString(R.string.player_score, score.toString())
             saveData()
         }
